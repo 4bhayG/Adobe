@@ -1,74 +1,147 @@
-Adobe 1A - PDF Heading Extraction
-This project provides a containerized solution for extracting a structured outline, including a title and hierarchical headings, from PDF documents. It analyzes the stylistic and positional properties of text within a PDF to generate a JSON output.
 
-How It Works: Heading Extraction Logic 🔎
-The script identifies headings without relying on a PDF's built-in metadata, which is often missing or incorrect. The process is a multi-step analysis:
+# 📄 Adobe 1A - PDF Heading Extraction
 
-Font Profiling: The script first performs a full scan of the document to identify all unique font styles (combinations of font name, size, color, and weight). It counts the occurrences of each style to determine that the most frequently used font style is the primary paragraph text (<p>).
+This project provides a **containerized Python solution** to extract structured outlines (title, headings, subheadings) from PDF documents without relying on unreliable built-in metadata.
 
-Semantic Tagging: With the baseline paragraph style established, the script assigns semantic tags to all other font styles.
+The script analyzes **stylistic (font size, style)** and **positional (layout)** properties of text in PDFs to generate a structured **JSON output** representing the document’s heading hierarchy.
 
-Text with a larger font size than the paragraph text is tagged as a potential heading (<h1>, <h2>, etc.).
+---
 
-Text with a smaller font size is tagged as small text (<s>).
+## 🚀 Features
 
-Content Parsing and Filtering: The script reads the text content page by page, in natural reading order (top-to-bottom, left-to-right). During this process, it:
+- Detects and tags headings (`<h1>`, `<h2>`, etc.) based on font properties.
+- Filters out irrelevant content like footers, headers, and table text.
+- Builds a hierarchical structure based on relative font sizes.
+- Completely self-contained using Docker.
 
-Detects and ignores text within tables by identifying horizontal and vertical lines.
+---
 
-Filters out common headers and footers by ignoring text in the top 5% and bottom 10% of each page.
+## 🔍 How It Works
 
-Heading Identification: The list of potential headings is further refined using a set of heuristics to distinguish them from other text:
+### 1. **Font Profiling**
+- Scans all text to identify unique font styles (name, size, color, weight).
+- Determines the most common style, assumed to be paragraph text (`<p>`).
 
-The text is typically short (less than 90 characters).
+### 2. **Semantic Tagging**
+- Tags text **larger than `<p>`** as potential headings (`<h1>`, `<h2>`, etc.).
+- Tags smaller text as `<s>` (small).
 
-It does not start with a lowercase letter.
+### 3. **Content Parsing**
+- Reads text **page by page** in natural reading order (top-to-bottom, left-to-right).
+- **Ignores**:
+  - Text inside tables (detected using lines).
+  - Headers and footers (top 5%, bottom 10% of page height).
 
-It contains non-numeric characters.
+### 4. **Heading Identification**
+- Applies heuristics:
+  - Less than 90 characters  
+  - Starts with an uppercase letter  
+  - Includes non-numeric characters  
+  - Avoids ending punctuation like commas, semicolons
 
-It does not end with standard punctuation like commas or semicolons.
+### 5. **Hierarchy Generation**
+- Determines heading levels:
+  - Larger font → higher level (e.g., `<h1>`)
+  - Smaller font → subheading (e.g., `<h2>`, `<h3>`)
 
-Hierarchy Generation: Finally, the script constructs the hierarchical outline for the JSON output. It determines the level of each heading (e.g., H1, H2) by comparing its font size to that of the preceding heading. A larger font indicates a higher level in the hierarchy (e.g., moving from an H2 to an H1), and a smaller font indicates a lower level.
+---
 
-Requirements 📋
-The project is designed to be run inside a Docker container, so the only direct requirement is Docker Desktop.
+## 📦 Requirements
 
-The Python environment inside the container uses the following key libraries:
+- **Docker** (only external requirement)
 
-PyMuPDF: For parsing PDF files.
+### Python Dependencies (within container):
+- `PyMuPDF`: PDF parsing  
+- `pandas`: Text sorting and manipulation
 
-pandas: For data manipulation during text block sorting.
+---
 
-How to Run with Docker 🐳
-Follow these steps to process your PDF files.
+## 🛠️ Project Structure
 
-Prerequisites
-Ensure you have Docker installed and running on your system.
-
-File Structure
-Your project folder should be organized as follows:
-
+```
 your_project_folder/
 ├── input/
-│   └── your_document.pdf
-├── output/
-├── app.py
-├── Dockerfile
-└── requirements.txt
-Step 1: Place Your PDFs
-Copy all the PDF files you want to process into the input directory.
+│   └── your_document.pdf          # Place your PDF files here
+├── output/                        # JSON output will appear here
+├── app.py                         # Main script
+├── Dockerfile                     # Docker setup
+└── requirements.txt               # Python dependencies
+```
 
-Step 2: Build the Docker Image
-Open a terminal in your project's root directory (the one containing the Dockerfile) and run the following command. This will build the image for a standard Linux environment and tag it as pdf-parser.
+---
 
-Bash
+## 🐳 How to Run (with Docker)
 
+### 1. Install Docker
+
+Make sure Docker Desktop is installed and running on your machine:  
+👉 https://www.docker.com/products/docker-desktop
+
+---
+
+### 2. Place Your PDFs
+
+Copy all the PDF files you want to process into the `input/` directory.
+
+---
+
+### 3. Build the Docker Image
+
+Run the following command in your project root (where `Dockerfile` is located):
+
+```bash
 docker build --platform linux/amd64 -t pdf-parser .
-Step 3: Run the Container
-Once the build is complete, run the following command. It will process all PDFs in the input folder and place the results in the output folder.
+```
 
-Bash
+---
 
-docker run --rm -v "$(pwd)/input:/app/input" -v "$(pwd)/output:/app/output" --network none pdf-parser
-Step 4: Check the Output
-The script will generate a corresponding .json file for each processed PDF in your local output folder.
+### 4. Run the Container
+
+This will process all PDFs inside `input/` and save JSONs to `output/`:
+
+```bash
+docker run --rm \
+  -v "$(pwd)/input:/app/input" \
+  -v "$(pwd)/output:/app/output" \
+  --network none \
+  pdf-parser
+```
+
+---
+
+### 5. View Output
+
+Each `.pdf` will generate a corresponding `.json` in the `output/` folder.
+
+---
+
+## 📁 Sample Output (JSON)
+
+```json
+[
+  {
+    "level": "H1",
+    "text": "Introduction"
+  },
+  {
+    "level": "H2",
+    "text": "Background and Motivation"
+  },
+  {
+    "level": "H2",
+    "text": "Approach"
+  }
+]
+```
+
+---
+
+## 📬 Contact
+
+Feel free to reach out if you have questions or suggestions!
+
+---
+
+## 📝 License
+
+This project is licensed under the **MIT License**.
